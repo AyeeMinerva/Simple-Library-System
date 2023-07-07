@@ -1,0 +1,816 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <ctime>
+#include<conio.h>
+#include <Windows.h>
+using namespace std;
+
+//结构体、常量与随机变量定义
+//账户
+const string AccountPath = "accounts.txt";
+struct account
+{
+    string name;
+    string password;
+    int job;
+};
+const string jobs[3] = { "读者","图书管理员","超级管理员" };
+//公告
+const string NoticePath = "notices.txt";
+//图书
+struct Time
+{
+    int y;
+    int m;
+    int d;
+};
+struct book
+{
+    string name;
+    string num;
+    int quantity;
+    int borrowed;
+};
+const string BookPath = "books.txt";
+const string BorrowRecordPath = "borrow_records.txt";
+
+
+//通知与输出展示
+bool Hello()
+{
+    cout << "//////////////////////////////////////" << endl;
+    cout << "//        欢迎使用图书管理系统      //" << endl;
+    cout << "//////////////////////////////////////" << endl;
+    return true;
+}
+void help(int job)
+{
+    cout << "//////////////////////////////////////" << endl;
+    cout << "//              菜单                //" << endl;
+    switch (job)
+    {
+    case 0:
+        cout << "//1. 借书" << endl;
+        cout << "//2. 还书" << endl;
+        cout << "//3. 查询个人信息" << endl;
+        cout << "//4. 查询图书信息" << endl;
+        cout << "//5. 查询所有图书信息" << endl;
+        cout << "//6. 查看公告" << endl;
+        cout << "//7. 注销" << endl;
+        break;
+    case 1:
+        cout << "//1. 添加图书" << endl;
+        cout << "//2. 删除图书" << endl;
+        cout << "//3. 查询所有图书信息" << endl;
+        cout << "//4. 查询未还书信息" << endl;
+        cout << "//5. 发布公告" << endl;
+        cout << "//6. 注销" << endl;
+        break;
+    case 2:
+        cout << "//1. 注册新账户" << endl;
+        cout << "//2. 修改账户信息" << endl;
+        cout << "//3. 查看所有读者用户信息" << endl;
+        cout << "//4. 查看所有图书管理员" << endl;
+        cout << "//5. 注销" << endl;
+        break;
+    }
+    cout << "//0. 退出" << endl;
+    cout << "//////////////////////////////////////" << endl;
+}
+
+//账户与账户管理
+void loginCompare(account& user)
+{
+    user.job = -1;
+    ifstream fin;
+    fin.open(AccountPath);
+    account temp;
+    while (fin >> temp.name >> temp.password >> temp.job)
+    {
+        if (temp.name == user.name && temp.password == user.password)
+        {
+            user.job = temp.job;
+            return;
+        }
+    }
+    fin.close();
+    return;
+}
+bool login(account& user)
+{
+    cout << "//请登录：" << endl;
+    cout << "//请输入您的账号:";
+    cin >> user.name;
+    cout << "//请输入您的密码:";
+    //密码的加密输入
+    char ch, inputPassword[33];
+    int intdx = 0;
+    while ((ch = _getch()) != '\r')//当输入的不是回车的时候就继续读入
+    {
+        if (ch != '\b')
+        {
+            cout << "*";
+            inputPassword[intdx++] = ch;
+        }//如果没有输入退格就在屏幕上输出一个*
+        else
+        {
+            cout << '\b';
+            intdx--;
+        }//如果输入退格就先输出一个退格然后在将上次输出的*换为空格然后继续退格
+    }
+    cout << endl;
+    for (int di = 0; di < intdx; di++)
+    {
+        user.password += inputPassword[di];//将字符数组读入临时账户的密码
+    }
+    loginCompare(user);//登录比较检测
+    if (user.job >= 0)//如果存在该用户及用户身份
+    {
+        cout << "欢迎登陆，" << jobs[user.job] << " " << user.name << endl;
+        return true;
+    }
+    else
+    {
+        cout << "账户不存在!" << endl;
+        return false;
+    }
+}
+bool addAccount()
+{
+    ofstream fout;
+    fout.open(AccountPath, ios::app);
+    if (!fout)
+    {
+        cout << "文件打开失败...请重试";
+        return false;
+    }
+    account temp;
+    cout << "注册开始:" << endl;
+    cout << "请输入账号:";
+    cin >> temp.name;
+    cout << "请输入密码:";
+    cin >> temp.password;
+    cout << "请输入用户身份: 读者(0), 管理员(1), 超级管理员(2): ";
+    cin >> temp.job;
+    fout << temp.name << " " << temp.password << " " << temp.job << endl;
+    fout.close();
+    return true;
+}
+bool modifyAccount()
+{
+    cout << "请输入要修改密码的账户用户名:" << endl;
+    string tempName;
+    cin >> tempName;
+    ifstream fin;
+    fin.open(AccountPath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return false;
+    }
+    account temp;
+    bool exist = false;
+    string tempFileData = ""; //临时储存文件内容
+    while (fin >> temp.name >> temp.password >> temp.job)
+    {
+        if (temp.name == tempName)
+        {
+            cout << "已找到该用户，当前信息为:" << endl;
+            cout << temp.name << ' ' << temp.password << ' ' << temp.job << endl;
+            cout << "请输入新信息:" << endl;
+            cout << "用户名:";
+            cin >> temp.name;
+            cout << "密码:";
+            cin >> temp.password;
+            cout << "用户身份: 读者(0), 管理员(1), 超级管理员(2): ";
+            cin >> temp.job;
+            exist = true;
+        }
+        tempFileData += temp.name + ' ' + temp.password + ' ' + to_string(temp.job) + '\n';
+    }
+    if (!exist)
+        cout << "该用户不存在!" << endl;
+    fin.close();
+
+    ofstream fout;
+    fout.open(AccountPath);
+    fout << tempFileData;
+    fout.close();
+    return exist;
+}
+void viewReaders()
+{
+    ifstream fin(AccountPath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+
+    cout << "读者用户如下:" << endl;
+    string temp;
+    while (getline(fin, temp))
+    {
+        stringstream ss(temp);
+        string name, password;
+        int job;
+        ss >> name >> password >> job;
+        if (jobs[job] == "读者")
+        {
+            cout << "用户名: " << name << endl;
+            cout << "用户身份: " << jobs[job] << endl;
+            cout << endl;
+        }
+    }
+
+    fin.close();
+}
+void viewBookAdmins()
+{
+    ifstream fin(AccountPath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+
+    cout << "图书管理员如下:" << endl;
+    string temp;
+    while (getline(fin, temp))
+    {
+        stringstream ss(temp);
+        string name, password;
+        int job;
+        ss >> name >> password >> job;
+        if (jobs[job] == "图书管理员")
+        {
+            cout << "用户名: " << name << endl;
+            cout << "用户身份: " << jobs[job] << endl;
+            cout << endl;
+        }
+    }
+
+    fin.close();
+}
+
+//公告与公告管理
+bool newNotice()
+{
+    cout << "//正在准备发布新公告....." << endl;
+    ofstream fout;
+    fout.open(NoticePath, ios::app);
+    if (!fout)
+    {
+        cout << "文件打开失败...请重试";
+        return false;
+    }
+    string temp;
+    cout << "//请输入要发布的公告，单独一行输入Ctrl+Z组合键结束.." << endl;
+    while (getline(cin, temp))
+    {
+        fout << temp << endl;
+    }
+    fout << endl;
+    cin.clear();
+    cin.ignore();
+    fout.close();
+    cout << "//您所新建的公告已被保存" << endl;
+    return true;
+}
+void showNotice()
+{
+    cout << "正在查询公告.." << endl;
+    ifstream fin;
+    fin.open(NoticePath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+    cout << "当前查询到的公告如下:" << endl;
+    string temp;
+    while (getline(fin, temp))
+    {
+        cout << temp << endl;
+    }
+    fin.close();
+}
+
+//图书与图书管理
+void addBook()
+{
+    cout << "请输入要添加的图书信息:" << endl;
+    ofstream fout;
+    fout.open(BookPath, ios::app);
+    if (!fout)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+
+    book newBook;
+    cin.ignore();//清除缓冲区的空格
+    cout << "图书编号: ";
+    getline(cin, newBook.num);
+    cout << "图书名称: ";
+    getline(cin, newBook.name);
+    cout << "输入添加数量: ";
+    cin>>newBook.quantity; // 设置默认数量为1
+    newBook.borrowed = 0; // 设置默认借出数量为0
+
+    // 查找是否已存在该编号的图书
+    ifstream fin(BookPath);
+    string line;
+    bool bookExists = false;
+    while (getline(fin, line))
+    {
+        stringstream ss(line);
+        string existingNum;
+        ss >> existingNum;
+        if (existingNum == newBook.num)
+        {
+            bookExists = true;
+            break;
+        }
+    }
+    fin.close();
+
+    if (bookExists)
+    {
+        cout << "图书已存在，数量增加一本。" << endl;
+        // 在原有记录上增加一本图书的数量
+        ifstream fin(BookPath);
+        ofstream temp;
+        temp.open("temp.txt");
+        while (getline(fin, line))
+        {
+            stringstream ss(line);
+            string existingNum;
+            string existingName;
+            int existingQuantity; 
+            int existingBorrowed;
+            ss >> existingName >> existingNum;
+            if (existingNum == newBook.num)
+            {
+                newBook.quantity++; // 增加数量
+                temp << newBook.name << " " << newBook.num << " " << newBook.quantity+ existingQuantity << " " << newBook.borrowed+ existingBorrowed << endl;
+            }
+            else
+            {
+                temp << line << endl;
+            }
+        }
+        fin.close();
+        temp.close();
+        remove(BookPath.c_str());
+        rename("temp.txt", BookPath.c_str());
+    }
+    else
+    {
+        fout << newBook.name << " " << newBook.num << " " << newBook.quantity << " " << newBook.borrowed << endl;
+        fout.close();
+    }
+    cout << "图书添加成功!" << endl;
+}
+void deleteBook()
+{
+    string bookNum;
+    cout << "请输入要删除的图书编号: ";
+    cin >> bookNum;
+
+    ifstream fin;
+    fin.open(BookPath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+
+    ofstream fout;
+    fout.open("temp.txt");
+    if (!fout)
+    {
+        cout << "文件打开失败...请重试";
+        fin.close();
+        return;
+    }
+
+    string temp;
+    bool found = false;
+    while (getline(fin, temp))
+    {
+        string num;
+        string name;
+        stringstream ss(temp);
+        ss >> name >> num;
+        if (num != bookNum)
+        {
+            fout << temp << endl;
+        }
+        else
+        {
+            found = true;
+        }
+    }
+
+    fin.close();
+    fout.close();
+
+    remove(BookPath.data());
+    rename("temp.txt", BookPath.data());
+
+    if (found)
+    {
+        cout << "图书删除成功!" << endl;
+    }
+    else
+    {
+        cout << "找不到该图书编号!" << endl;
+    }
+}
+void borrowBook(account& user)
+{
+    string bookNum;
+    cout << "请输入要借阅的图书编号: ";
+    cin >> bookNum;
+
+    ifstream fin;
+    fin.open(BookPath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+
+    ofstream fout;
+    fout.open("temp.txt");
+    if (!fout)
+    {
+        cout << "文件打开失败...请重试";
+        fin.close();
+        return;
+    }
+
+    string temp;
+    bool found = false;
+    Time borrowTime;
+    while (getline(fin, temp))//读入文件,查找图书
+    {
+        stringstream ss(temp);
+        string name,num;
+        int quantity;
+        int borrowed;
+        ss >>name>> num >> quantity >> borrowed;
+        if (num == bookNum && quantity-borrowed>0)//若找到,则修改书籍信息
+        {
+            found = true;
+            fout << name << " " << num << " " << quantity << " " << borrowed + 1;
+            char tempch;
+            do {
+                cout << "请输入合法的借书日期:格式YYYY/MM/DD";
+                cin >> borrowTime.y >> tempch >> borrowTime.m >> tempch >> borrowTime.d;
+            } while (!(borrowTime.m <= 12 && borrowTime.m > 0 && borrowTime.d > 0 && borrowTime.d <= 31));//借书日期检测
+        }
+        else
+        {
+            fout << temp << endl;
+        }
+    }
+
+    fin.close();
+    fout.close();
+
+    remove(BookPath.data());
+    rename("temp.txt", BookPath.data());
+
+    if (found)
+    {
+        cout << "图书借阅成功!" << endl;
+
+        ofstream recordOut;
+        recordOut.open(BorrowRecordPath, ios::app);
+        if (!recordOut)
+        {
+            cout << "文件打开失败...请重试";
+            return;
+        }
+        //输出借书记录
+        recordOut << user.name << " " << bookNum << " " << borrowTime.y << " " << borrowTime.m << " " << borrowTime.d << endl;
+        recordOut.close();
+    }
+    else
+    {
+        cout << "该图书已被借出或不存在!" << endl;
+    }
+}
+void returnBook(account& user)
+{
+    string bookNum;
+    cout << "请输入要归还的图书编号: ";
+    cin >> bookNum;
+    Time returnTime;
+    cout << "请输入归还时间,格式YYYY/MM/DD" << endl;
+    char tempch;
+    cin >> returnTime.y >> tempch >> returnTime.m >> tempch >> returnTime.d;
+    ifstream fin;
+    fin.open(BookPath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+
+    ofstream fout;
+    fout.open("temp.txt");
+    if (!fout)
+    {
+        cout << "文件打开失败...请重试";
+        fin.close();
+        return;
+    }
+
+    string temp;
+    bool found = false;
+    while (getline(fin, temp))
+    {
+        stringstream ss(temp);
+        string name, num;
+        int quantity,borrowed;
+        ss >> name >> num >> quantity >> borrowed;
+        if (num == bookNum && borrowed>=1)
+        {
+            found = true;
+            fout << name <<" " << num <<" "<<quantity<<" "<<borrowed-1 << endl;
+        }
+        else
+        {
+            fout << temp << endl;
+        }
+    }
+
+    fin.close();
+    fout.close();
+
+    remove(BookPath.data());
+    rename("temp.txt", BookPath.data());
+
+    if (found)
+    {
+        cout << "图书归还成功!" << endl;
+        //修改记录文件:
+        fin.open(BorrowRecordPath);
+        if (!fin)
+        {
+            cout << "文件打开失败...请重试";
+            return;
+        }
+        fout.open("temp.txt");
+        if (!fout)
+        {
+            cout << "文件打开失败...请重试";
+            fin.close();
+            return;
+        }
+        string temp;
+        bool found = false;
+        while (getline(fin, temp))
+        {
+            stringstream ss(temp);
+            string name, num;
+            ss >> name >> num;
+            if (!(num == bookNum&&name==user.name))
+            {
+                fout << temp << endl;
+            }
+        }
+        fin.close();
+        fout.close();
+        remove(BorrowRecordPath.data());
+        rename("temp.txt", BorrowRecordPath.data());
+    }
+    else
+    {
+        cout << "该图书未被借出或不存在!" << endl;
+    }
+}
+void showAllBooks()
+{
+    cout << "当前所有馆藏图书如下:" << endl;
+    ifstream fin;
+    fin.open(BookPath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+    string temp;
+    while (getline(fin, temp))
+    {
+        stringstream ss(temp);
+        string name, num;
+        int quantity, borrowed;
+        ss >> name >> num >> quantity >> borrowed;
+        cout << endl;
+        cout << "图书名称:" << name << endl;
+        cout << "图书编号: " << num << endl;
+        cout << "图书状态: " << "共有" << quantity << "本 已借出" << borrowed << "本" << endl;
+    }
+
+    fin.close();
+
+}
+void showBookInfo()
+{
+    string bookNum;
+    cout << "请输入要查询的图书编号: ";
+    cin >> bookNum;
+
+    ifstream fin;
+    fin.open(BookPath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+
+    string temp;
+    bool found = false;
+    while (getline(fin, temp))
+    {
+        stringstream ss(temp);
+        string name, num; 
+        int quantity, borrowed;
+        ss >> name >> num >>quantity>> borrowed;
+        if (num == bookNum)
+        {
+            found = true;
+            cout << endl;
+            cout << "图书名称:" << name << endl;
+            cout << "图书编号: " << num << endl;
+            cout << "图书状态: " << "共有"<<quantity<<"本 已借出"<<borrowed<<"本" << endl;
+            break;
+        }
+    }
+
+    fin.close();
+
+    if (!found)
+    {
+        cout << "该图书不存在!" << endl;
+    }
+}
+void showBorrowRecords()
+{
+    ifstream fin;
+    fin.open(BorrowRecordPath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+
+    cout << "借阅记录如下:" << endl;
+    string temp;
+    while (getline(fin, temp))
+    {
+        cout << temp << endl;
+    }
+
+    fin.close();
+}
+void showBorrowRecords(account& user)
+{
+    ifstream fin;
+    fin.open(BorrowRecordPath);
+    if (!fin)
+    {
+        cout << "文件打开失败...请重试";
+        return;
+    }
+
+    cout << "借阅记录如下:" << endl;
+    string temp;
+    while (getline(fin, temp))
+    {
+        string name, num;
+        Time t;
+        stringstream ss(temp);
+        ss >> name >> num >> t.y >> t.m >> t.d;
+        if (name == user.name)
+            cout << num << " " << t.y << "/" << t.m << "/" << t.d << endl;
+    }
+
+    fin.close();
+}
+
+//主函数
+int main()
+{
+Begin:
+    system("cls");
+    Hello();
+    account currentUser;
+    while (true)
+    {
+        if (login(currentUser))
+            break;
+    }
+    int choice;
+    while(true)
+    {
+        system("cls"); // 清屏
+        help(currentUser.job);
+        cout << "//请输入您要进行的操作:";
+        cin >> choice;
+        switch (currentUser.job)
+        {
+        case 0:
+            switch (choice)
+            {
+            case 1:
+                borrowBook(currentUser);
+                break;
+            case 2:
+                returnBook(currentUser);
+                break;
+            case 3:
+                showBorrowRecords(currentUser);
+                break;
+            case 4:
+                showBookInfo();
+                break;
+            case 5:
+                showAllBooks();
+                break;
+            case 6:
+                showNotice();
+                break;
+            case 7:
+                goto Begin;
+                //return 0;
+                break;
+            default:
+                cout << "输入有误，请重新输入!" << endl;
+                break;
+            }
+            break;
+        case 1:
+            switch (choice)
+            {
+            case 1:
+                addBook();
+                break;
+            case 2:
+                deleteBook();
+                break;
+            case 3:
+                showAllBooks();
+                break;
+            case 4:
+                showBorrowRecords();
+                break;
+            case 5:
+                newNotice();
+                break;
+            case 6:
+                goto Begin;
+                //return 0;
+                break;
+            default:
+                cout << "输入有误，请重新输入!" << endl;
+                break;
+            }
+            break;
+        case 2:
+            switch (choice)
+            {
+            case 1:
+                addAccount();
+                break;
+            case 2:
+                modifyAccount();
+                break;
+            case 3:
+                viewReaders();
+                break;
+            case 4:
+                viewBookAdmins();
+                break;
+            case 5:
+                goto Begin;
+                //return 0;
+            default:
+                cout << "输入有误，请重新输入!" << endl;
+                break;
+            }
+            break;
+        default:
+            break;
+        }
+        system("pause");
+    }
+    return 0;
+}
