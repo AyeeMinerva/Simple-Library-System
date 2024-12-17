@@ -10,3 +10,5 @@ Modifications and usage of this project must be attributed to the original autho
 来自于内蒙古大学的AyeeMinerva
 这个项目的开源协议基于[Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 使用和修改该项目必须标明出自原作者且包含版权声明,遵循LICENSE开源协议
+
+p.s.现在此项目居然在CSDN上挂19.9
